@@ -39,8 +39,10 @@ public class HelloWorld implements BurpExtension {
 
 class HelloWorldExample implements HttpHandler {
     private final Logging logging;
-    private final Http http; //これなに？
+    private final Http http; 
     private boolean flag=false;
+    private String beforeUrl = null;
+    private String afterUrl = null;
     
     public HelloWorldExample(MontoyaApi api) {
         this.logging = api.logging();
@@ -49,9 +51,20 @@ class HelloWorldExample implements HttpHandler {
 
     @Override
     public RequestToBeSentAction handleHttpRequestToBeSent(HttpRequestToBeSent requestToBeSent) {
-        String urlString = requestToBeSent.url().toString();
-        logging.logToOutput("URL: " + urlString);
+        
+        if(flag){
+        logging.logToOutput("変更後");
+        afterUrl = requestToBeSent.url().toString();
+        logging.logToOutput("URL: " + afterUrl);
 
+        }
+        else{
+            logging.logToOutput("変更前");
+            beforeUrl = requestToBeSent.url().toString();
+            logging.logToOutput("URL: " + beforeUrl);
+
+        }
+        
         // contains 使用
         if (requestToBeSent.contains("DVWA", false)) {
             logging.logToOutput("This message contain DVWA");
@@ -82,6 +95,7 @@ class HelloWorldExample implements HttpHandler {
             }
         }
 
+        // logging.logToOutput("変更後URL: " + modified.url());
 
         modified = modified.withUpdatedParameters(updateParame);
         logging.logToOutput("copy parameter: " + updateParame.toString());
@@ -90,34 +104,45 @@ class HelloWorldExample implements HttpHandler {
               return RequestToBeSentAction.continueWith(modified);
         }
 
-
+        
         flag=true;
-        HttpRequestResponse res=http.sendRequest(modified);
+         HttpRequestResponse res=http.sendRequest(modified);
         HttpResponse rr=res.response();
-        logging.logToOutput(res.toString());
+        // logging.logToOutput(res.toString());
         // logging.logToOutput(rr.toString());  
         flag=false;
 
-
+        compareUrl();
         // 特定パスならハイライトを付与してそのまま継続
-        if (urlString.contains("DVWA")) {
-            Annotations ann = requestToBeSent.annotations().withHighlightColor(HighlightColor.RED);
-            return RequestToBeSentAction.continueWith(modified);
-        }
-
+        // if (urlString.contains("DVWA")) {
+        //     Annotations ann = requestToBeSent.annotations().withHighlightColor(HighlightColor.RED);
+        //     return RequestToBeSentAction.continueWith(modified);
+        // }
+        logging.logToOutput("");
+        logging.logToOutput("");
         return RequestToBeSentAction.continueWith(modified);
     }
 
+
+ private void compareUrl() {
+        if (beforeUrl != null && afterUrl != null) {
+            if (!beforeUrl.equals(afterUrl)) {
+                logging.logToOutput("URLの変更があります");
+            } else {
+                logging.logToOutput("URLは変更されていません");
+            }
+        }
+ }
     @Override
     public ResponseReceivedAction handleHttpResponseReceived(HttpResponseReceived responseReceived) {
         String urlString = responseReceived.initiatingRequest().url().toString();
-        logging.logToOutput("response URL: " + urlString);
-        logging.logToOutput("");
+        // logging.logToOutput("response URL: " + urlString);
+        // logging.logToOutput("");
         String GREEN = "\u001B[32m";
         String RESET = "\u001B[0m";
 
         if (urlString.contains("csrf")) {
-            String target = "https://abehiroshi.la.coocan.jp/";
+            String target = "http://localhost/DVWA/security.php";
 
             short status = 302;
             var modified = responseReceived
@@ -133,3 +158,5 @@ class HelloWorldExample implements HttpHandler {
         return ResponseReceivedAction.continueWith(responseReceived);
     }
 }
+
+
