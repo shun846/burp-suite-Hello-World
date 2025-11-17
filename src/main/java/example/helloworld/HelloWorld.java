@@ -43,6 +43,8 @@ class HelloWorldExample implements HttpHandler {
     private boolean flag=false;
     private String beforeUrl = null;
     private String afterUrl = null;
+    private List<HttpParameter> beforeParame =new ArrayList<>();
+    private List<HttpParameter> afterParame =  new ArrayList<>();
     
     public HelloWorldExample(MontoyaApi api) {
         this.logging = api.logging();
@@ -53,12 +55,14 @@ class HelloWorldExample implements HttpHandler {
     public RequestToBeSentAction handleHttpRequestToBeSent(HttpRequestToBeSent requestToBeSent) {
         
         if(flag){
+        afterParame.clear();
         logging.logToOutput("変更後");
         afterUrl = requestToBeSent.url().toString();
         logging.logToOutput("URL: " + afterUrl);
 
         }
         else{
+            beforeParame.clear();
             logging.logToOutput("変更前");
             beforeUrl = requestToBeSent.url().toString();
             logging.logToOutput("URL: " + beforeUrl);
@@ -72,21 +76,35 @@ class HelloWorldExample implements HttpHandler {
 
         HttpRequest modified = requestToBeSent;
 
-
+    
         
         // URL パラメータを追加
         // HttpParameter urlPara = HttpParameter.urlParameter("password", "password");
         // modified = modified.withParameter(urlPara);
         // logging.logToOutput("Add urlParameter: " + modified.toString());
 
-        // URL パラメータの編集
+        
         List<ParsedHttpParameter> now_parame = requestToBeSent.parameters();
         logging.logToOutput("Now parameter: " + now_parame.toString());
-        
 
-        List<HttpParameter> updateParame = new ArrayList<>();  
+
+        List<HttpParameter> updateParame = new ArrayList<>(); 
         for (ParsedHttpParameter p : now_parame) {
-    
+        updateParame.add(HttpParameter.parameter(p.name(), p.value(), p.type()));
+        }
+
+       
+        for(HttpParameter hp : updateParame){
+            beforeParame.add(HttpParameter.parameter(hp.name(), hp.value(), hp.type()));
+        }
+
+
+          for (HttpParameter hp : updateParame) {
+        logging.logToOutput("Param: " + hp.type() + " " + hp.name() + "=" + hp.value());
+        } 
+        
+        // URL パラメータの編集
+        for (ParsedHttpParameter p : now_parame) {
             if ("URL".equals(p.type().name()) && "id".equals(p.name())) {
         updateParame.add(HttpParameter.urlParameter("id", "admin"));
         
@@ -95,10 +113,14 @@ class HelloWorldExample implements HttpHandler {
             }
         }
 
-        // logging.logToOutput("変更後URL: " + modified.url());
-
-        modified = modified.withUpdatedParameters(updateParame);
-        logging.logToOutput("copy parameter: " + updateParame.toString());
+        for(HttpParameter hp : updateParame){
+            afterParame.add(HttpParameter.parameter(hp.name(), hp.value(), hp.type()));
+        }
+       
+        
+         modified = modified.withUpdatedParameters(updateParame);
+       
+       
 
         if(flag){
               return RequestToBeSentAction.continueWith(modified);
@@ -131,7 +153,29 @@ class HelloWorldExample implements HttpHandler {
             } else {
                 logging.logToOutput("URLは変更されていません");
             }
+
+        
+        for (HttpParameter before : beforeParame) {
+            for (HttpParameter after : afterParame) {
+                // 同じ名前
+                if (before.name().equals(after.name())) {
+
+                    // 値
+                    if (!before.value().equals(after.value())) {
+                        logging.logToOutput(
+                            before.name() + " : " +
+                            before.value() + " → " + after.value() + " に変更されました"
+                        );
+                    }
+                    break;
+                }
+            }
         }
+        
+           
+    }
+
+
  }
     @Override
     public ResponseReceivedAction handleHttpResponseReceived(HttpResponseReceived responseReceived) {
